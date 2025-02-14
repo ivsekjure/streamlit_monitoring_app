@@ -1,0 +1,18 @@
+definition_version: '2'
+entities:
+  streamlit_monitoring_app:
+    type: streamlit
+    identifier:
+      name: streamlit_monitoring_app
+    main_file: streamlit_app.py
+    pages_dir: pages
+    query_warehouse: STANDARD_XS
+    stage: streamlit_app
+    artifacts:
+      - streamlit_app.py
+      - environment.yml
+      - warehouse_monitoring.py
+      - user_groups_monitoring.py
+      - third_party_apps_monitoring.py
+      - query_analysis.py
+
