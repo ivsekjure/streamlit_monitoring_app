@@ -31,7 +31,7 @@ def user_group_analysis():
 ################################ STREAMLIT UI ################################
 
 
-st.title("USER GROUPS MONITORING")
+st.title("user groups monitoring")
 
 
 # User groups analysis

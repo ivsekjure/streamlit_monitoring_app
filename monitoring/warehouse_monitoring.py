@@ -73,7 +73,7 @@ def seven_day_average_trend():
 ################################ STREAMLIT UI ################################
 
 
-st.title("WAREHOUSE MONITORING")
+st.title("warehouse monitoring")
 
 
 # Warehouse information

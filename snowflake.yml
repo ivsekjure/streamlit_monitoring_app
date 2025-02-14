@@ -11,8 +11,4 @@ entities:
     artifacts:
       - streamlit_app.py
       - environment.yml
-      - warehouse_monitoring.py
-      - user_groups_monitoring.py
-      - third_party_apps_monitoring.py
-      - query_analysis.py
-
+      - monitoring

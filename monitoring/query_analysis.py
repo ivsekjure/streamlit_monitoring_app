@@ -51,7 +51,7 @@ def longest_queries():
 
 ################################ STREAMLIT UI ################################
 
-st.title("QUERY ANALYSIS")
+st.title("query analysis")
 
 df = query_num_of_executions()
 #df = df[df["QUERY_TEXT"] != ' ']

@@ -41,7 +41,7 @@ def sf_automation_task():
 
 
 # 3rd party apps consumption
-st.title("3RD PARTY APPS CONSUMPTION")
+st.title("3rd party apps consumption")
 
 df = third_party_apps_consumption()
 
