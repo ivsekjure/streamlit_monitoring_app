@@ -15,6 +15,10 @@ st.set_page_config(layout="wide")
 # Get the current credentials
 session = get_active_session()
 
+# Define database and schema where the views are created
+database = "dbt_demo"
+schema = "public"
+
 
 
 # Function to Fetch Data from Snowflake
@@ -26,13 +30,13 @@ def get_data(query):
 # 3rd party apps consumption
 def third_party_apps_consumption():
     """Fetch data for 3rd party apps analysis"""
-    query = """select * from dbt_demo.public.third_party_apps_consumption"""
+    query = f'select * from {database}.{schema}.third_party_apps_consumption'
     return get_data(query)
 
 
 # SF automation task
 def sf_automation_task():
-    query = """select * from dbt_demo.public.sf_automation_task"""
+    query = f'select * from {database}.{schema}.sf_automation_task'
     return get_data(query)
 
 

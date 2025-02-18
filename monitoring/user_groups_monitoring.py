@@ -15,6 +15,10 @@ st.set_page_config(layout="wide")
 # Get the current credentials
 session = get_active_session()
 
+# Define database and schema where the views are created
+database = "dbt_demo"
+schema = "public"
+
 
 # Function to Fetch Data from Snowflake
 def get_data(query):
@@ -24,14 +28,14 @@ def get_data(query):
 # User groups analysis
 def user_group_analysis():
     """Fetch data for user groups"""
-    query = """select * from dbt_demo.public.user_groups_analysis"""
+    query = f'select * from {database}.{schema}.user_groups_analysis'
     return get_data(query)
 
 
 ################################ STREAMLIT UI ################################
 
 
-st.title("user groups monitoring")
+st.title("User groups monitoring")
 
 
 # User groups analysis

@@ -10,12 +10,17 @@ from snowflake.snowpark.functions import col
 from snowflake.snowpark.functions import to_date
 from snowflake.snowpark.context import get_active_session
 
+
 st.set_page_config(layout="wide")
 
 
 # Get the current credentials
 session = get_active_session()
 
+
+# Define database and schema where the views are created
+database = "dbt_demo"
+schema = "public"
 
 
 # Function to Fetch Data from Snowflake
@@ -28,42 +33,42 @@ def get_data(query):
 def show_warehouses():
     """Fetch warehouse information."""
     session.sql("SHOW WAREHOUSES").collect()
-    query = """select * from dbt_demo.public.warehouses_vw"""
+    query = f'select * from {database}.{schema}.warehouses_vw'
     return get_data(query)
 
 
 # Function to Fetch Monthly WH Consumption
 def wh_monthly_consumption_f():
     """Fetch monthly warehouse consumption."""
-    query = """select * from dbt_demo.public.wh_monthly_consumption_vw"""
+    query = f'select * from {database}.{schema}.wh_monthly_consumption_vw'
     return get_data(query)
 
 
 # Function to fetch average day-by-day consumption
 def avg_day_by_day_consumption():
     """Fetch day-by-day warehouse consumption data."""
-    query = """select * from dbt_demo.public.avg_day_by_day_consumption"""
+    query = f'select * from {database}.{schema}.avg_day_by_day_consumption'
     return get_data(query)
 
 
 # Daily peaks
 def daily_peaks():
     """Daily peaks"""
-    query = """select * from dbt_demo.public.daily_peaks"""
+    query = f'select * from {database}.{schema}.daily_peaks'
     return get_data(query)
 
 
 # Autosuspend costs
 def autosuspend_costs():
     """Fetch information about autosuspend costs"""
-    query = """select * from dbt_demo.public.autosuspend_costs"""
+    query = f'select * from {database}.{schema}.autosuspend_costs'
     return get_data(query)
 
 
 # 7 day average trend
 def seven_day_average_trend():
     """Get 7 days average trend"""
-    query = """select * from dbt_demo.public.seven_day_average_trend"""
+    query = f'select * from {database}.{schema}.seven_day_average_trend'
     return get_data(query)
 
 
@@ -73,7 +78,7 @@ def seven_day_average_trend():
 ################################ STREAMLIT UI ################################
 
 
-st.title("warehouse monitoring")
+st.title("Warehouse monitoring")
 
 
 # Warehouse information

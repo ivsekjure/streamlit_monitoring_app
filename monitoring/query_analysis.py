@@ -16,6 +16,12 @@ st.set_page_config(layout="wide")
 # Get the current credentials
 session = get_active_session()
 
+# Define database and schema where the views are created
+database = "dbt_demo"
+schema = "public"
+
+
+
 # Function to Fetch Data from Snowflake
 def get_data(query):
     """Executes a SQL query and returns the result as a Pandas DataFrame."""
@@ -24,34 +30,34 @@ def get_data(query):
 # Queries by number of Times Executed and Execution Time
 def query_num_of_executions():
     """Queries by number of Times Executed and Execution Time"""
-    query = """select * from dbt_demo.public.query_num_of_executions"""
+    query = f'select * from {database}.{schema}.query_num_of_executions'
     return get_data(query)
 
 
 # Qeries by Execution Buckets over the Past 5 months
 def query_execution_time_groups():
     """Qeries by Execution Buckets over the Past 5 months"""
-    query = """select * from dbt_demo.public.query_execution_time_groups"""
+    query = f'select * from {database}.{schema}.query_execution_time_groups'
     return get_data(query)
 
 
 # Qeries by Execution Buckets over the Past 5 months
 def query_duration():
     """Qeries by Execution Buckets over the Past 5 months"""
-    query = """select * from dbt_demo.public.query_duration"""
+    query = f'select * from {database}.{schema}.query_duration'
     return get_data(query)
 
 
 # 50 longest queries
 def longest_queries():
     """50 longest queries"""
-    query = """select * from dbt_demo.public.top_50_longest_queries"""
+    query = f'select * from {database}.{schema}.top_50_longest_queries'
     return get_data(query)
 
 
 ################################ STREAMLIT UI ################################
 
-st.title("query analysis")
+st.title("Query analysis")
 
 df = query_num_of_executions()
 #df = df[df["QUERY_TEXT"] != ' ']
