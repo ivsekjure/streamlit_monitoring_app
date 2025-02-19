@@ -9,13 +9,33 @@ import plotly.express as px
 from snowflake.snowpark.functions import col
 from snowflake.snowpark.functions import to_date
 from snowflake.snowpark.context import get_active_session
-
+from snowflake.snowpark import Session
+from output.bundle.streamlit.utils import is_running_local, get_active_session
 
 st.set_page_config(layout="wide")
 
+if __name__ == '__page__':
+    if is_running_local():
+        import os
+        # # RUN LOCALLY
+        CONNECTION_PARAMETERS = {
+            "account": os.environ["SF_ACCOUNT"],
+            "user": os.environ["SF_USER"],
+            "password": os.environ["SF_PASSWORD"],
+            "role": "SYSADMIN",
+            "database": "DBT_DEMO",
+            "warehouse": "STANDARD_XS",
+            "schema": "PUBLIC",
+        }
 
-# Get the current credentials
-session = get_active_session()
+        session = Session.builder.configs(CONNECTION_PARAMETERS).create()
+
+    else: 
+        # # RUN ON SNOWFLAKE 
+        session = get_active_session()
+
+# # Get the current credentials
+# session = get_active_session()
 
 
 # Define database and schema where the views are created
