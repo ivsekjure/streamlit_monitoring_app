@@ -12,6 +12,7 @@ from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark import Session
 from output.bundle.streamlit.utils import is_running_local, get_active_session
 
+
 st.set_page_config(layout="wide")
 
 if __name__ == '__page__':
@@ -37,19 +38,19 @@ if __name__ == '__page__':
 # session = get_active_session()
 
 # Define database and schema where the views are created
-database = "dbt_demo"
-schema = "public"
+database = "monitoring"
+schema = "monitoring_schema"
 
 
 # Function to Fetch Data from Snowflake
 def get_data(query):
     """Executes a SQL query and returns the result as a Pandas DataFrame."""
-    return session.sql(query).to_pandas()
+    return pd.DataFrame(session.sql(query).collect())
 
 # User groups analysis
 def user_group_analysis():
     """Fetch data for user groups"""
-    query = f'select * from {database}.{schema}.user_groups_analysis'
+    query = f'select * from table({database}.{schema}.user_groups_analysis())'
     return get_data(query)
 
 
