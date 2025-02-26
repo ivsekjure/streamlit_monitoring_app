@@ -45,6 +45,4 @@ create or replace view QUERY_EXECUTION_TIME_GROUPS(
          -- and TOTAL_ELAPSED_TIME > 0 
          and TOTAL_ELAPSED_TIME/1000 >= 60
      )
- -- group by 1, 2, 3, 4
- order by 1, 2, 3
  ;

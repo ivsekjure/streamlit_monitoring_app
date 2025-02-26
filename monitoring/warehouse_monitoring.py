@@ -6,11 +6,12 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-from snowflake.snowpark.functions import col
+from snowflake.snowpark.functions import col, current_role
 from snowflake.snowpark.functions import to_date
 from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark import Session
 from output.bundle.streamlit.utils import is_running_local, get_active_session
+
 
 st.set_page_config(layout="wide")
 
@@ -39,56 +40,55 @@ if __name__ == '__page__':
 
 
 # Define database and schema where the views are created
-database = "dbt_demo"
-schema = "public"
+database = "monitoring"
+schema = "monitoring_schema"
 
 
 # Function to Fetch Data from Snowflake
 def get_data(query):
     """Executes a SQL query and returns the result as a Pandas DataFrame."""
-    return session.sql(query).to_pandas()
+    return pd.DataFrame(session.sql(query).collect())
 
 
 # Function to fetch warehouse data
 def show_warehouses():
     """Fetch warehouse information."""
-    session.sql("SHOW WAREHOUSES").collect()
-    query = f'select * from {database}.{schema}.warehouses_vw'
+    query = f'select * from  table({database}.{schema}.warehouses_vw())'
     return get_data(query)
 
 
 # Function to Fetch Monthly WH Consumption
 def wh_monthly_consumption_f():
     """Fetch monthly warehouse consumption."""
-    query = f'select * from {database}.{schema}.wh_monthly_consumption_vw'
+    query = f'select * from  table({database}.{schema}.wh_monthly_consumption_vw())'
     return get_data(query)
 
 
 # Function to fetch average day-by-day consumption
 def avg_day_by_day_consumption():
     """Fetch day-by-day warehouse consumption data."""
-    query = f'select * from {database}.{schema}.avg_day_by_day_consumption'
+    query = f'select * from  table({database}.{schema}.avg_day_by_day_consumption())'
     return get_data(query)
 
 
 # Daily peaks
 def daily_peaks():
     """Daily peaks"""
-    query = f'select * from {database}.{schema}.daily_peaks'
+    query = f'select * from  table({database}.{schema}.daily_peaks())'
     return get_data(query)
 
 
 # Autosuspend costs
 def autosuspend_costs():
     """Fetch information about autosuspend costs"""
-    query = f'select * from {database}.{schema}.autosuspend_costs'
+    query = f'select * from  table({database}.{schema}.autosuspend_costs())'
     return get_data(query)
 
 
 # 7 day average trend
 def seven_day_average_trend():
     """Get 7 days average trend"""
-    query = f'select * from {database}.{schema}.seven_day_average_trend'
+    query = f'select * from  table({database}.{schema}.seven_day_average_trend())'
     return get_data(query)
 
 
@@ -104,17 +104,22 @@ st.title("Warehouse monitoring")
 # Warehouse information
 show_wh_data = show_warehouses()
 st.subheader("List of Warehouses by size")
-st.bar_chart(show_wh_data, x = 'AUTO_SUSPEND', y = 'WH_NAME', color = 'WH_SIZE')
+st.bar_chart(show_wh_data, x = 'WH_NAME', y = 'AUTO_SUSPEND', color = 'WH_SIZE')
 
 
 
 # Monthly warehouse consumption
 monthly_consumption = wh_monthly_consumption_f()
-st.subheader('Monthly warehouse consumption compute')
-st.bar_chart(monthly_consumption, x = 'YEAR_MONTH', y = 'CREDITS_USED', color = 'NAME')
-st.subheader('Monthly warehouse serverless compute')
-st.bar_chart(monthly_consumption, x = 'YEAR_MONTH', y = 'CREDITS_USED', color = 'SERVICE_TYPE')
 
+
+# monthly_consumption.CREDITS_USED = monthly_consumption.CREDITS_USED.astype(int)
+st.subheader('Monthly warehouse consumption compute')
+st.bar_chart(monthly_consumption, y = 'CREDITS_USED', x = 'YEAR_MONTH',  color = 'NAME')
+st.subheader('Monthly warehouse serverless compute')
+st.bar_chart(monthly_consumption, y = 'CREDITS_USED', x = 'YEAR_MONTH',  color = 'SERVICE_TYPE' )
+
+
+st.table(monthly_consumption)
 
 
 # Average day-by-day warehouse consumption
