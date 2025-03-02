@@ -4,15 +4,20 @@ import streamlit as st
 import datetime
 import pandas as pd
 import numpy as np
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import plotly.graph_objects as go
 import plotly.express as px
 from snowflake.snowpark.functions import col
 from snowflake.snowpark.functions import to_date
 from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark import Session
-from output.bundle.streamlit.utils import is_running_local, get_active_session
+from monitoring.utils import is_running_local, get_active_session, filter_date_time_frame
 
 st.set_page_config(layout="wide")
+date_from_default = datetime.now() - relativedelta(years=1)
+date_from = st.sidebar.date_input(label="From", value=date_from_default)
+date_to = st.sidebar.date_input(label="To", value="today")
 
 if __name__ == '__page__':
     if is_running_local():
@@ -38,27 +43,29 @@ if __name__ == '__page__':
 # session = get_active_session()
 
 # Define database and schema where the views are created
-database = "dbt_demo"
-schema = "public"
+database = "monitoring"
+schema = "monitoring_schema"
 
 
 
 # Function to Fetch Data from Snowflake
 def get_data(query):
     """Executes a SQL query and returns the result as a Pandas DataFrame."""
-    return session.sql(query).to_pandas()
+    return pd.DataFrame(session.sql(query).collect())
 
 
 # 3rd party apps consumption
+@st.cache_data(ttl=3600)
 def third_party_apps_consumption():
     """Fetch data for 3rd party apps analysis"""
-    query = f'select * from {database}.{schema}.third_party_apps_consumption'
+    query = f'select * from table({database}.{schema}.third_party_apps_consumption())'
     return get_data(query)
 
 
 # SF automation task
+@st.cache_data(ttl=3600)
 def sf_automation_task():
-    query = f'select * from {database}.{schema}.sf_automation_task'
+    query = f'select * from table({database}.{schema}.sf_automation_task())'
     return get_data(query)
 
 
@@ -116,7 +123,8 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 
+df1 = filter_date_time_frame(df, "sf_automation_task", date_from, date_to)
 st.subheader("Number of same queries executed (all groups summed)")
 
-st.area_chart(df, x = 'DATE', y = 'EXE_COUNT', color = 'DATABASE_NAME')
+st.area_chart(df1, x = 'DATE', y = 'EXE_COUNT', color = 'DATABASE_NAME')
 
