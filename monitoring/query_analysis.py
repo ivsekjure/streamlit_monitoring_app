@@ -65,7 +65,7 @@ def query_num_of_executions():
 @st.cache_data(ttl=3600)
 def query_execution_time_groups():
     """Qeries by Execution Buckets over the Past 5 months"""
-    query = f'select * from {database}.{schema}.query_execution_time_groups'
+    query = f'select * from table({database}.{schema}.query_execution_time_groups())'
     return get_data(query)
 
 
@@ -73,7 +73,7 @@ def query_execution_time_groups():
 @st.cache_data(ttl=3600)
 def query_duration():
     """Qeries by Execution Buckets over the Past 5 months"""
-    query = f'select * from {database}.{schema}.query_duration'
+    query = f'select * from table({database}.{schema}.query_duration())'
     return get_data(query)
 
 
@@ -81,7 +81,7 @@ def query_duration():
 @st.cache_data(ttl=3600)
 def longest_queries():
     """50 longest queries"""
-    query = f'select * from {database}.{schema}.top_50_longest_queries'
+    query = f'select * from table({database}.{schema}.top_50_longest_queries())'
     return get_data(query)
 
 
@@ -89,8 +89,10 @@ def longest_queries():
 
 st.title("Query analysis")
 
+
 df = query_num_of_executions()
 df = filter_date_time_frame(df, "query_num_of_executions", date_from, date_to)
+# st.table(df)
 
 # fig = px.bar(
 #     x=df["DATE"],

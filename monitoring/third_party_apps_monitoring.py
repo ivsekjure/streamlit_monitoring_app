@@ -77,6 +77,7 @@ def sf_automation_task():
 st.title("3rd party apps consumption")
 
 df = third_party_apps_consumption()
+df.sort_values(by='APPROXIMATE_CREDITS_USED', ascending=False)
 
 st.bar_chart(df, x = 'CLIENT_APPLICATION_NAME', y = 'APPROXIMATE_CREDITS_USED', color = 'WAREHOUSE_NAME')
 
