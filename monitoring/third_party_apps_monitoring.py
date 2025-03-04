@@ -15,14 +15,17 @@ from snowflake.snowpark import Session
 from monitoring.utils import is_running_local, get_active_session, filter_date_time_frame
 
 st.set_page_config(layout="wide")
+
+# DEFINE DATE RANGE INPUTS
 date_from_default = datetime.now() - relativedelta(years=1)
 date_from = st.sidebar.date_input(label="From", value=date_from_default)
 date_to = st.sidebar.date_input(label="To", value="today")
 
+# INITIALIZE SNOWFLAKE SESSION
 if __name__ == '__page__':
     if is_running_local():
         import os
-        # # RUN LOCALLY
+        # RUN LOCALLY
         CONNECTION_PARAMETERS = {
             "account": os.environ["SF_ACCOUNT"],
             "user": os.environ["SF_USER"],
@@ -36,17 +39,17 @@ if __name__ == '__page__':
         session = Session.builder.configs(CONNECTION_PARAMETERS).create()
 
     else: 
-        # # RUN ON SNOWFLAKE 
+        # RUN ON SNOWFLAKE 
         session = get_active_session()
 
-# # Get the current credentials
-# session = get_active_session()
-
-# Define database and schema where the views are created
+# DEFINE DATABASE AND SCHEMA WHERE THE VIEWS ARE CREATED
 database = "monitoring"
 schema = "monitoring_schema"
 
 
+# ================================
+# DATA QUERY FUNCTIONS
+# ================================
 
 # Function to Fetch Data from Snowflake
 def get_data(query):
@@ -70,30 +73,71 @@ def sf_automation_task():
 
 
 
-################################ STREAMLIT UI ################################
+################################################################ STREAMLIT UI ################################################################
 
-
-# 3rd party apps consumption
+# ================================
+# 3RD PARTY APPS CONSUMPTION
+# ================================
 st.title("3rd party apps consumption")
 
-df = third_party_apps_consumption()
-df.sort_values(by='APPROXIMATE_CREDITS_USED', ascending=False)
+third_party_consumption = third_party_apps_consumption()
+third_party_consumption.sort_values(by='APPROXIMATE_CREDITS_USED', ascending=False)
 
-st.bar_chart(df, x = 'CLIENT_APPLICATION_NAME', y = 'APPROXIMATE_CREDITS_USED', color = 'WAREHOUSE_NAME')
+unique_whs = third_party_consumption['WAREHOUSE_NAME'].unique()
+color_map = {cat: px.colors.qualitative.Plotly[i % len(px.colors.qualitative.Plotly)] for i, cat in enumerate(unique_whs)}
+
+bar_charts = []
+for warehouse in unique_whs:
+    warehouse_data = third_party_consumption[third_party_consumption['WAREHOUSE_NAME'] == warehouse]
+    bar_chart = go.Bar(
+        x=warehouse_data['APPROXIMATE_CREDITS_USED'],
+        y=warehouse_data['CLIENT_APPLICATION_NAME'],
+        name=f'APPROXIMATE_CREDITS_USED - Warehouse {warehouse}',
+        marker_color=color_map[warehouse],
+        orientation='h'
+    )
+    bar_charts.append(bar_chart)
+
+fig = go.Figure(data=bar_charts)
+
+# fig = go.Figure(go.Bar(
+#     x=third_party_consumption['APPROXIMATE_CREDITS_USED'],
+#     y=third_party_consumption['CLIENT_APPLICATION_NAME'],
+#     orientation='h',
+#     marker=dict(color=[color_map[cat] for cat in third_party_consumption['WAREHOUSE_NAME']])
+# ))
+
+# Update layout
+fig.update_layout(
+    xaxis_title='APPROXIMATE_CREDITS_USED',
+    yaxis_title='CLIENT_APPLICATION_NAME',
+    yaxis={'categoryorder': 'total ascending'},
+    barmode='stack',
+    legend=dict(
+        x=0.01,  
+        y=1.5,  
+    )
+)
+
+# Display the chart in Streamlit
+st.plotly_chart(fig)
+# st.bar_chart(third_party_consumption, x = 'CLIENT_APPLICATION_NAME', y = 'APPROXIMATE_CREDITS_USED', color = 'WAREHOUSE_NAME', horizontal=True)
 
 
-
-# SF automation task
-
+# ================================
+# SF AUTOMATION TASK
+# ================================
 st.subheader("SF automation task")
 
-df = sf_automation_task()
+automation_task = sf_automation_task()
+automation_task = filter_date_time_frame(automation_task, "sf_automation_task", date_from, date_to)
+
 
 fig = go.Figure()
 
 # bar chart by NAME
-for warehouse in df['NAME'].unique():
-    warehouse_data = df[df['NAME'] == warehouse]
+for warehouse in automation_task['NAME'].unique():
+    warehouse_data = automation_task[automation_task['NAME'] == warehouse]
     fig.add_trace(go.Bar(
         x=warehouse_data['DATE'],
         y=warehouse_data['DURATION_HOURS'],
@@ -106,8 +150,8 @@ for warehouse in df['NAME'].unique():
 
 # CREDITS_USED
 fig.add_trace(go.Scatter(
-    x=df['DATE'],
-    y=df['CREDITS_USED'],
+    x=automation_task['DATE'],
+    y=automation_task['CREDITS_USED'],
     mode='lines',
     name='CREDITS_USED',
     line=dict(color='blue')
@@ -117,15 +161,18 @@ fig.add_trace(go.Scatter(
 fig.update_layout(
     title='Daily task durations and credits used',
     xaxis_title='Date',
-    yaxis_title='Values',
+    yaxis_title='Hours',
     barmode='group'
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
 
-df1 = filter_date_time_frame(df, "sf_automation_task", date_from, date_to)
+
+# ================================
+# NUMBER OF SAME QUERIES EXECUTED
+# ================================
 st.subheader("Number of same queries executed (all groups summed)")
 
-st.area_chart(df1, x = 'DATE', y = 'EXE_COUNT', color = 'DATABASE_NAME')
+st.area_chart(automation_task, x = 'DATE', y = 'EXE_COUNT', color = 'DATABASE_NAME')
 

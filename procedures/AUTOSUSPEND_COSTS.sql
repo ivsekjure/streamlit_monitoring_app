@@ -1,0 +1,77 @@
+CREATE OR REPLACE PROCEDURE MONITORING.MONITORING_SCHEMA.AUTOSUSPEND_COSTS()
+RETURNS TABLE ("DATE" DATE, "WAREHOUSE_NAME" VARCHAR, "CREDITS_USED_TOTAL" FLOAT, "CREDIT_USED_FOR_RESUME" FLOAT, "PCN_AUTORESUME_COST" FLOAT)
+LANGUAGE SQL
+EXECUTE AS OWNER
+AS '
+BEGIN
+
+   EXECUTE IMMEDIATE ''SHOW WAREHOUSES'';
+
+    LET results RESULTSET := (
+    WITH 
+     WH_SIZE AS
+     (
+    SELECT WAREHOUSE_SIZE, NODES
+    FROM (
+       SELECT ''X-Small'' AS WAREHOUSE_SIZE, 1 AS NODES
+       UNION ALL
+       SELECT ''Small'' AS WAREHOUSE_SIZE, 2 AS NODES
+       UNION ALL
+       SELECT ''Medium'' AS WAREHOUSE_SIZE, 4 AS NODES
+       UNION ALL
+       SELECT ''Large'' AS WAREHOUSE_SIZE, 8 AS NODES
+       UNION ALL
+       SELECT ''X-Large'' AS WAREHOUSE_SIZE, 16 AS NODES
+       UNION ALL
+       SELECT ''2X-Large'' AS WAREHOUSE_SIZE, 32 AS NODES
+       UNION ALL
+       SELECT ''3X-Large'' AS WAREHOUSE_SIZE, 64 AS NODES
+       UNION ALL
+       SELECT ''4X-Large'' AS WAREHOUSE_SIZE, 128 AS NODES
+     )
+     ),
+     WH_consumption as(
+         SELECT  
+           DATE(START_TIME) as DATE,
+           NAME,
+           SERVICE_TYPE,
+           SUM(CREDITS_USED) as CREDITS_USED_TOTAL
+         FROM METERING_HISTORY
+         WHERE SERVICE_TYPE = ''WAREHOUSE_METERING''
+         GROUP BY ALL
+     ),
+     WH_EVENTS_HIST as(
+         select
+           DATE(WEH.TIMESTAMP) as DATE,
+           WEH.WAREHOUSE_ID,
+           WEH.WAREHOUSE_NAME,
+           sum(case when WEH.EVENT_NAME = ''SUSPEND_CLUSTER'' and EVENT_REASON = ''WAREHOUSE_AUTOSUSPEND'' then 1 else 0 end) as SUSPEND_CNT
+         from SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_EVENTS_HISTORY as WEH
+         where WEH.CLUSTER_NUMBER is not null
+         group by all
+     ),
+     WH_USED_TOTAL as(
+       select 
+         WEH.DATE,
+         WEH.WAREHOUSE_NAME,
+         sum(WC.CREDITS_USED_TOTAL) as CREDITS_USED_TOTAL,
+         sum(((WEH.SUSPEND_CNT*WL."auto_suspend")/60/60) * WS.NODES) as CREDIT_USED_FOR_RESUME
+       from WH_EVENTS_HIST as WEH
+       left join TABLE(RESULT_SCAN(LAST_QUERY_ID())) as WL on(WL."name" = WEH.WAREHOUSE_NAME)
+       left join WH_SIZE as WS on(UPPER(WS.WAREHOUSE_SIZE) = UPPER(WL."size"))
+       left join WH_consumption as WC on(WC.NAME = WEH.WAREHOUSE_NAME and WC.DATE = WEH.DATE)
+       where WS.WAREHOUSE_SIZE is not null
+       group by all
+     )
+     select DATE
+         , WAREHOUSE_NAME
+         , CREDITS_USED_TOTAL::float
+         , CREDIT_USED_FOR_RESUME::float
+         , ((CREDIT_USED_FOR_RESUME / CREDITS_USED_TOTAL))::float as PCN_AUTORESUME_COST
+     from WH_USED_TOTAL
+     )
+     ;
+
+    RETURN TABLE(results);
+END;
+';

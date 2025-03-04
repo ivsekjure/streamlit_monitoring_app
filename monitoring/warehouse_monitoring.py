@@ -11,16 +11,19 @@ from snowflake.snowpark import Session
 from monitoring.utils import is_running_local, get_active_session, filter_date_time_frame
 
 
-
 st.set_page_config(layout="wide")
+
+# DEFINE DATE RANGE INPUTS
 date_from_default = datetime.now() - relativedelta(years=1)
 date_from = st.sidebar.date_input(label="From", value=date_from_default)
 date_to = st.sidebar.date_input(label="To", value="today")
 
+
+# INITIALIZE SNOWFLAKE SESSION
 if __name__ == '__page__':
     if is_running_local():
         import os
-        # # RUN LOCALLY
+        # run locally
         CONNECTION_PARAMETERS = {
             "account": os.environ["SF_ACCOUNT"],
             "user": os.environ["SF_USER"],
@@ -34,17 +37,18 @@ if __name__ == '__page__':
         session = Session.builder.configs(CONNECTION_PARAMETERS).create()
 
     else: 
-        # # RUN ON SNOWFLAKE 
+        # run on snowflake 
         session = get_active_session()
 
-# # Get the current credentials
-# session = get_active_session()
 
-
-# Define database and schema where the views are created
+# DEFINE DATABASE AND SCHEMA WHERE THE VIEWS ARE CREATED
 database = "monitoring"
 schema = "monitoring_schema"
 
+
+# ================================
+# DATA QUERY FUNCTIONS
+# ================================
 
 # Function to Fetch Data from Snowflake
 def get_data(query):
@@ -110,26 +114,26 @@ def seven_day_average_trend():
 
 
 
-################################ STREAMLIT UI ################################
-
+################################################################ STREAMLIT UI ################################################################
 
 st.title("Warehouse monitoring")
 
-print('test')
 
-# Warehouse information
-show_wh_data = show_warehouses()
+# ================================
+# WAREHOUSE INFORMATION
+# ================================
+warehouses = show_warehouses()
 
-show_wh_data = show_wh_data.sort_values(by='AUTO_SUSPEND',ascending=False)
-
-
+warehouses = warehouses.sort_values(by='AUTO_SUSPEND',ascending=False)
 
 st.subheader("List of Warehouses by size")
-st.bar_chart(show_wh_data, x = 'WH_NAME', y = 'AUTO_SUSPEND', color = 'WH_SIZE')
+st.bar_chart(warehouses, x = 'WH_NAME', y = 'AUTO_SUSPEND', color = 'WH_SIZE', horizontal=True)
 
 
 
-# Monthly warehouse consumption (YEAR_MONTH)
+# ================================
+# MONTHLY WAREHOUSE CONSUMPTION
+# ================================
 monthly_consumption = wh_monthly_consumption_f()
 monthly_consumption = filter_date_time_frame(monthly_consumption, "wh_monthly_consumption_f", date_from, date_to)
 
@@ -140,19 +144,19 @@ st.subheader('Monthly warehouse serverless compute')
 st.bar_chart(monthly_consumption, y = 'CREDITS_USED', x = 'YEAR_MONTH',  color = 'SERVICE_TYPE' )
 
 
-# st.table(monthly_consumption)
 
-
-# Average day-by-day warehouse consumption
-df = avg_day_by_day_consumption()
-df = filter_date_time_frame(df, "avg_day_by_day_consumption", date_from, date_to)
+# ================================
+# AVERAGE DAY-BY-DAY WAREHOUSE CONSUMPTION
+# ================================
+avg_day_by_day = avg_day_by_day_consumption()
+avg_day_by_day = filter_date_time_frame(avg_day_by_day, "avg_day_by_day_consumption", date_from, date_to)
 
 st.subheader('Average Day-by-Day Consumption')
 
 # Generate a color palette
 color_palette = px.colors.qualitative.Plotly
 
-unique_warehouses = df['WAREHOUSE_NAME'].unique()
+unique_warehouses = avg_day_by_day['WAREHOUSE_NAME'].unique()
 
 # Assign colors dynamically to each warehouse
 warehouse_colors = {warehouse: color_palette[i % len(color_palette)] for i, warehouse in enumerate(unique_warehouses)}
@@ -160,7 +164,7 @@ warehouse_colors = {warehouse: color_palette[i % len(color_palette)] for i, ware
 # Create a bar chart for "AVERAGE" with different colors for each warehouse
 bar_charts = []
 for warehouse in unique_warehouses:
-    warehouse_data = df[df['WAREHOUSE_NAME'] == warehouse]
+    warehouse_data = avg_day_by_day[avg_day_by_day['WAREHOUSE_NAME'] == warehouse]
     bar_chart = go.Bar(
         x=warehouse_data['DATE'], 
         y=warehouse_data['CREDITS_USED_COMPUTE'], 
@@ -170,10 +174,10 @@ for warehouse in unique_warehouses:
     bar_charts.append(bar_chart)
 
 # Create a line chart for "DAILY"
-line_chart1 = go.Scatter(x=df['DATE'], y=df['AVERAGE'], mode='lines+markers', name='AVERAGE of credits used')
+line_chart1 = go.Scatter(x=avg_day_by_day['DATE'], y=avg_day_by_day['AVERAGE'], mode='lines+markers', name='AVERAGE of credits used')
 
 # Create a line chart for "STD"
-line_chart2 = go.Scatter(x=df['DATE'], y=df['STDV'], mode='lines+markers', name='STDV of credits used')
+line_chart2 = go.Scatter(x=avg_day_by_day['DATE'], y=avg_day_by_day['STDV'], mode='lines+markers', name='STDV of credits used')
 
 fig = go.Figure(data=bar_charts + [line_chart1, line_chart2])
 
@@ -194,12 +198,13 @@ st.plotly_chart(fig)
 
 
 
-# SNOWFLAKE COMPONENTS
-df = wh_monthly_consumption_f()
-df = filter_date_time_frame(df, "wh_monthly_consumption_f", date_from, date_to)
+# ================================
+# OVERALL CONSUMPTION BY SF COMPONENTS
+# ================================
+wh_monthly = wh_monthly_consumption_f()
+wh_monthly = filter_date_time_frame(wh_monthly, "wh_monthly_consumption_f", date_from, date_to)
 
-df1 = df[df["SERVICE_TYPE"] != 'WAREHOUSE_METERING']
-
+df1 = wh_monthly[wh_monthly["SERVICE_TYPE"] != 'WAREHOUSE_METERING']
 
 df1 = df1.groupby(['SERVICE_TYPE'])['CREDITS_USED'].sum().reset_index()
 df1.sort_values(by=['CREDITS_USED', 'SERVICE_TYPE'], ascending=[False,True])
@@ -223,21 +228,12 @@ fig.update_layout(
 st.plotly_chart(fig)
 
 
-df2 = df.groupby(['NAME','SERVICE_TYPE'])['CREDITS_USED'].sum().reset_index()
 
+# ================================
+# CREDITS USED BREAKDOWN BY WAREHOUSE
+# ================================
+df2 = wh_monthly.groupby(['NAME','SERVICE_TYPE'])['CREDITS_USED'].sum().reset_index()
 
-# Bar chart by SERVICE_TYPE
-# for service_group in df2['SERVICE_TYPE'].unique():
-#     service_data = df2[df2['SERVICE_TYPE'] == service_group]
-#     fig.add_trace(go.Bar(
-#         y=service_data['NAME'],
-#         x=service_data['CREDITS_USED'],
-#         name=service_group,
-#         orientation='h',
-#         text=service_data['CREDITS_USED'],
-#         textposition='inside',  
-#         textfont=dict(color='white')  
-#     ))
 
 unique_services = df2["SERVICE_TYPE"].unique()
 color_map = {cat: px.colors.qualitative.Plotly[i % len(px.colors.qualitative.Plotly)] for i, cat in enumerate(unique_services)}
@@ -248,18 +244,9 @@ color_map = {cat: px.colors.qualitative.Plotly[i % len(px.colors.qualitative.Plo
 fig = go.Figure(go.Bar(
     x=df2['CREDITS_USED'],
     y=df2['NAME'],
-    marker=dict(color=[color_map[cat] for cat in df['SERVICE_TYPE']]),
+    marker=dict(color=[color_map[cat] for cat in wh_monthly['SERVICE_TYPE']]),
     orientation='h'
 ))
-
-# fig.update_layout(
-#     title='Credits used breakdown by warehouse',
-#     xaxis_title='Credits Used',
-#     yaxis_title='Warehouse Name',
-#     yaxis={'categoryorder':'total ascending'},
-#     legend_title='Service Group'
-# )
-
 
 # Update layout
 fig.update_layout(
@@ -276,36 +263,30 @@ st.plotly_chart(fig, use_container_width=True)
 
 
 
-# Daily peaks
-
+# ================================
+# DAILY PEAKS
+# ================================
 st.subheader('Daily peeks')
 
-df = daily_peaks1()
+daily_p = daily_peaks1()
 
-# df1 = df.fillna(0)
-# df1 = df1.iloc[:, :16]
-
-df1 = df
-
-wh_names = set(df1["WAREHOUSE_NAME"])
-print(wh_names)
-
-# unique_services = df2["SERVICE_TYPE"].unique()
-# color_map = {cat: px.colors.qualitative.Plotly[i % len(px.colors.qualitative.Plotly)] for i, cat in enumerate(unique_services)}
-
-
-
+wh_names = set(daily_p["WAREHOUSE_NAME"])
 
 # warehouse_name = st.selectbox('warehouse_name', wh_names, key=10)
 year = st.selectbox('Year', range(2025, 1990, -1), key=11)
 month = st.selectbox('Month', range(1, 13), key=12)
 
 # df1 = df1[df1["WAREHOUSE_NAME"] == warehouse_name]
-df1 = df1[df1["YEAR"] == year]
-df1 = df1[df1["MONTH"] == month]
+daily_p = daily_p[daily_p["YEAR"] == year]
+daily_p = daily_p[daily_p["MONTH"] == month]
 
 st.subheader("Daily credit consumption in selected month")
-st.line_chart(df1, x = 'DAY', y = 'CREDITS_USED', color = 'WAREHOUSE_NAME')
+
+fig = px.bar(daily_p, x='DAY', y='CREDITS_USED', color='WAREHOUSE_NAME')
+fig.update_layout(
+    xaxis={"dtick":1}
+)
+st.plotly_chart(fig)
 
 
 
@@ -346,21 +327,21 @@ st.line_chart(df1, x = 'DAY', y = 'CREDITS_USED', color = 'WAREHOUSE_NAME')
 
 
 
-# Autosuspend costs
-
+# ================================
+# AUTOSUSPEND COSTS
+# ================================
 st.subheader('Autosuspend costs')
 
-df = autosuspend_costs()
-df = filter_date_time_frame(df, "autosuspend_costs", date_from, date_to)
-
+autosuspend_c = autosuspend_costs()
+autosuspend_c = filter_date_time_frame(autosuspend_c, "autosuspend_costs", date_from, date_to)
 
 fig = go.Figure()
 # fig.add_annotation(text='Excluding today\'s date',xref="paper", yref="paper", x=0, y=1.1, showarrow=False)
 
 # Add the area chart for CREDITS_USED_TOTAL
 fig.add_trace(go.Bar(
-    x=df['DATE'],
-    y=df['CREDITS_USED_TOTAL'],
+    x=autosuspend_c['DATE'],
+    y=autosuspend_c['CREDITS_USED_TOTAL'],
     # mode='lines',
     name='CREDITS_USED_TOTAL'
     # fill='tozeroy'
@@ -368,8 +349,8 @@ fig.add_trace(go.Bar(
 
 # Add the area chart for CREDIT_USED_FOR_RESUME
 fig.add_trace(go.Bar(
-    x=df['DATE'],
-    y=df['CREDIT_USED_FOR_RESUME'],
+    x=autosuspend_c['DATE'],
+    y=autosuspend_c['CREDIT_USED_FOR_RESUME'],
     # mode='lines',
     name='CREDIT_USED_FOR_RESUME'
     # fill='tonexty'
@@ -377,8 +358,8 @@ fig.add_trace(go.Bar(
 
 # Add the bar chart for PCN_AUTORESUME_COST
 fig.add_trace(go.Bar(
-    x=df['DATE'],
-    y=df['PCN_AUTORESUME_COST'],
+    x=autosuspend_c['DATE'],
+    y=autosuspend_c['PCN_AUTORESUME_COST'],
     name='PCN_AUTORESUME_COST',
     marker_color='rgba(255, 0, 0, 0.6)',
     opacity=0.5
@@ -397,27 +378,26 @@ st.plotly_chart(fig, use_container_width=True)
 
 
 
-
-# 7 day average trend
+# ================================
+# 7 DAY AVERAGE TREND
+# ================================
 st.subheader('7 day average trend')
 
-df = seven_day_average_trend()
-df = filter_date_time_frame(df, "seven_day_average_trend", date_from, date_to)
+seven_day_avg = seven_day_average_trend()
+seven_day_avg = filter_date_time_frame(seven_day_avg, "seven_day_average_trend", date_from, date_to)
 
-
-warehouse_name = st.selectbox("Pick a desired warehouse: ",set(df["WAREHOUSE_NAME"]))
-
+warehouse_name = st.selectbox("Pick a desired warehouse: ",set(seven_day_avg["WAREHOUSE_NAME"]))
 
 #warehouse_name = 'COMPUTE_WH' #CHANGE THE NAME OF DESIRED WAREHOUSE 
-df = df[df["WAREHOUSE_NAME"] == warehouse_name]
+seven_day_avg = seven_day_avg[seven_day_avg["WAREHOUSE_NAME"] == warehouse_name]
 
 # Create the figure
 fig = go.Figure()
 
 # Add the area chart for CREDITS_USED_DATE_WH
 fig.add_trace(go.Scatter(
-    x=df['START_DATE'],
-    y=df['CREDITS_USED_DATE_WH'],
+    x=seven_day_avg['START_DATE'],
+    y=seven_day_avg['CREDITS_USED_DATE_WH'],
     mode='lines',
     name='CREDITS_USED_DATE_WH',
     fill='tozeroy'
@@ -425,8 +405,8 @@ fig.add_trace(go.Scatter(
 
 # Add the area chart for CREDIT_USED_FOR_RESUME
 fig.add_trace(go.Scatter(
-    x=df['START_DATE'],
-    y=df['CREDITS_USED_7_DAY_AVG'],
+    x=seven_day_avg['START_DATE'],
+    y=seven_day_avg['CREDITS_USED_7_DAY_AVG'],
     mode='lines',
     name='CREDITS_USED_7_DAY_AVG',
 #   fill='tonexty'
@@ -436,10 +416,14 @@ fig.add_trace(go.Scatter(
 
 # Update layout
 fig.update_layout(
-    title='Credits Usage and Cost Over Time',
+    # title='Credits Usage and Cost Over Time',
     xaxis_title='Date',
     yaxis_title='Values',
-    barmode='overlay'
+    barmode='overlay',
+    legend=dict(
+        x=0.01,  
+        y=1.3,  
+    )
 )
 
 # Render the chart in Streamlit

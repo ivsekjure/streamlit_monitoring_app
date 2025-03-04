@@ -15,14 +15,17 @@ from snowflake.snowpark import Session
 from monitoring.utils import is_running_local, get_active_session, filter_date_time_frame
 
 st.set_page_config(layout="wide")
+
+# DEFINE DATE RANGE INPUTS
 date_from_default = datetime.now() - relativedelta(years=1)
 date_from = st.sidebar.date_input(label="From", value=date_from_default)
 date_to = st.sidebar.date_input(label="To", value="today")
 
+# INITIALIZE SNOWFLAKE SESSION
 if __name__ == '__page__':
     if is_running_local():
         import os
-        # # RUN LOCALLY
+        # RUN LOCALLY
         CONNECTION_PARAMETERS = {
             "account": os.environ["SF_ACCOUNT"],
             "user": os.environ["SF_USER"],
@@ -36,17 +39,18 @@ if __name__ == '__page__':
         session = Session.builder.configs(CONNECTION_PARAMETERS).create()
 
     else: 
-        # # RUN ON SNOWFLAKE 
+        # RUN ON SNOWFLAKE 
         session = get_active_session()
 
-# # Get the current credentials
-# session = get_active_session()
 
-# Define database and schema where the views are created
+# DEFINE DATABASE AND SCHEMA
 database = "monitoring"
 schema = "monitoring_schema"
 
 
+# ================================
+# DATA QUERY FUNCTIONS
+# ================================
 
 # Function to Fetch Data from Snowflake
 def get_data(query):
@@ -84,59 +88,62 @@ def longest_queries():
     query = f'select * from table({database}.{schema}.top_50_longest_queries())'
     return get_data(query)
 
-
-################################ STREAMLIT UI ################################
+################################################################ STREAMLIT UI ################################################################
 
 st.title("Query analysis")
 
+# ================================
+# DISPLAY NUMBER OF EXECUTIONS
+# ================================
+q_num_exec = query_num_of_executions()
+q_num_exec_filtered = filter_date_time_frame(q_num_exec, "query_num_of_executions", date_from, date_to)
+q_num_exec_filtered = q_num_exec.groupby(by=['DATE', 'WAREHOUSE_NAME']).sum().reset_index()
 
-df = query_num_of_executions()
-df = filter_date_time_frame(df, "query_num_of_executions", date_from, date_to)
-# st.table(df)
-
-# fig = px.bar(
-#     x=df["DATE"],
-#     y=df["NUMBER_OF_QUERIES"], 
-#     color="WAREHOUSE_NAME"
-# )
-# fig.show()
-# # st.plotly_chart(fig)
-
-st.bar_chart(df, x = 'DATE', y = 'NUMBER_OF_QUERIES', color = 'WAREHOUSE_NAME', stack=True)
+st.bar_chart(q_num_exec_filtered, x = 'DATE', y = 'NUMBER_OF_QUERIES', color = 'WAREHOUSE_NAME', stack=True)
 
 st.subheader("Repeated queries")
-st.line_chart(df, x = 'DATE', y = 'NUMBER_OF_QUERIES', color = 'QUERY_TEXT')
+st.line_chart(q_num_exec_filtered, x = 'DATE', y = 'NUMBER_OF_QUERIES', color = 'QUERY_TEXT')
 
 
 
-
-
+# ================================
+# QUERY SEGMENTATION INTO TIME GROUPS
+# ================================
 df = query_execution_time_groups()
+df = filter_date_time_frame(df, "query_num_of_executions", date_from, date_to)
+df1 = df.groupby(by=['DATE', 'TIME_GROUP']).sum().reset_index()
 
 st.subheader("Query segmentation into time groups")
-st.bar_chart(df, x = "DATE", y = 'COUNT_OF_QUERIES', color = 'TIME_GROUP')
+st.bar_chart(df1, x = "DATE", y = 'COUNT_OF_QUERIES', color = 'TIME_GROUP')
 
+df2 = df.groupby(by=['DATE', 'WAREHOUSE_NAME']).sum().reset_index()
 st.subheader("Execution minutes per WH")
-st.bar_chart(df, x = "DATE", y = 'EXECUTION_MINUTES', color = 'WAREHOUSE_NAME')
+st.bar_chart(df2, x = "DATE", y = 'EXECUTION_MINUTES', color = 'WAREHOUSE_NAME')
 
 
 
+# ================================
+# QUERY DURATION FILTERING
+# ================================
+q_duration = query_duration()
 
-df = query_duration()
-
-wh_names = set(df["WAREHOUSE_NAME"])
+wh_names = set(q_duration["WAREHOUSE_NAME"])
 
 duration_in_minutes = st.slider('duration in minutes', 0.1, 600.00)
 warehouse_name = st.selectbox('warehouse_name', wh_names)
 execution_start = st.date_input("Execution start")
 
-df = df[df["EXECUTION_MINUTES"] >= duration_in_minutes]
-df = df[df["WAREHOUSE_NAME"] == warehouse_name]
-df = df[df["START_TIME"] == execution_start]
+q_duration = q_duration[q_duration["EXECUTION_MINUTES"] >= duration_in_minutes]
+q_duration = q_duration[q_duration["WAREHOUSE_NAME"] == warehouse_name]
+q_duration = q_duration[q_duration["START_TIME"] == execution_start]
 
 
 
-df = longest_queries()
+# ================================
+# DISPLAY LONGEST RUNNING QUERIES
+# ================================
+longest_q = longest_queries()
+longest_q = longest_q.groupby(by=['USER_NAME', 'YEAR_MONTH_WEEK']).sum().reset_index()
 
 st.subheader("Longest running queries by user")
-st.bar_chart(df, x = "YEAR_MONTH_WEEK", y = "EXECUTION_TIME_MINUTES", color = "USER_NAME")
+st.bar_chart(longest_q, x = "YEAR_MONTH_WEEK", y = "EXECUTION_TIME_MINUTES", color = "USER_NAME")
