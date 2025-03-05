@@ -266,27 +266,28 @@ st.plotly_chart(fig, use_container_width=True)
 # ================================
 # DAILY PEAKS
 # ================================
-st.subheader('Daily peeks')
+with st.container(border=True):
+    st.subheader('Daily peeks')
 
-daily_p = daily_peaks1()
+    daily_p = daily_peaks1()
 
-wh_names = set(daily_p["WAREHOUSE_NAME"])
+    wh_names = set(daily_p["WAREHOUSE_NAME"])
 
-# warehouse_name = st.selectbox('warehouse_name', wh_names, key=10)
-year = st.selectbox('Year', range(2025, 1990, -1), key=11)
-month = st.selectbox('Month', range(1, 13), key=12)
+    # warehouse_name = st.selectbox('warehouse_name', wh_names, key=10)
+    year = st.selectbox('Year', range(2025, 1990, -1), key=11)
+    month = st.selectbox('Month', range(1, 13), key=12)
 
-# df1 = df1[df1["WAREHOUSE_NAME"] == warehouse_name]
-daily_p = daily_p[daily_p["YEAR"] == year]
-daily_p = daily_p[daily_p["MONTH"] == month]
+    # df1 = df1[df1["WAREHOUSE_NAME"] == warehouse_name]
+    daily_p = daily_p[daily_p["YEAR"] == year]
+    daily_p = daily_p[daily_p["MONTH"] == month]
 
-st.subheader("Daily credit consumption in selected month")
+    st.subheader("Daily credit consumption in selected month")
 
-fig = px.bar(daily_p, x='DAY', y='CREDITS_USED', color='WAREHOUSE_NAME')
-fig.update_layout(
-    xaxis={"dtick":1}
-)
-st.plotly_chart(fig)
+    fig = px.bar(daily_p, x='DAY', y='CREDITS_USED', color='WAREHOUSE_NAME')
+    fig.update_layout(
+        xaxis={"dtick":1}
+    )
+    st.plotly_chart(fig)
 
 
 
@@ -381,50 +382,51 @@ st.plotly_chart(fig, use_container_width=True)
 # ================================
 # 7 DAY AVERAGE TREND
 # ================================
-st.subheader('7 day average trend')
+with st.container(border=True):
+    st.subheader('7 day average trend')
 
-seven_day_avg = seven_day_average_trend()
-seven_day_avg = filter_date_time_frame(seven_day_avg, "seven_day_average_trend", date_from, date_to)
+    seven_day_avg = seven_day_average_trend()
+    seven_day_avg = filter_date_time_frame(seven_day_avg, "seven_day_average_trend", date_from, date_to)
 
-warehouse_name = st.selectbox("Pick a desired warehouse: ",set(seven_day_avg["WAREHOUSE_NAME"]))
+    warehouse_name = st.selectbox("Pick a desired warehouse: ",set(seven_day_avg["WAREHOUSE_NAME"]))
 
-#warehouse_name = 'COMPUTE_WH' #CHANGE THE NAME OF DESIRED WAREHOUSE 
-seven_day_avg = seven_day_avg[seven_day_avg["WAREHOUSE_NAME"] == warehouse_name]
+    #warehouse_name = 'COMPUTE_WH' #CHANGE THE NAME OF DESIRED WAREHOUSE 
+    seven_day_avg = seven_day_avg[seven_day_avg["WAREHOUSE_NAME"] == warehouse_name]
 
-# Create the figure
-fig = go.Figure()
+    # Create the figure
+    fig = go.Figure()
 
-# Add the area chart for CREDITS_USED_DATE_WH
-fig.add_trace(go.Scatter(
-    x=seven_day_avg['START_DATE'],
-    y=seven_day_avg['CREDITS_USED_DATE_WH'],
-    mode='lines',
-    name='CREDITS_USED_DATE_WH',
-    fill='tozeroy'
-))
+    # Add the area chart for CREDITS_USED_DATE_WH
+    fig.add_trace(go.Scatter(
+        x=seven_day_avg['START_DATE'],
+        y=seven_day_avg['CREDITS_USED_DATE_WH'],
+        mode='lines',
+        name='CREDITS_USED_DATE_WH',
+        fill='tozeroy'
+    ))
 
-# Add the area chart for CREDIT_USED_FOR_RESUME
-fig.add_trace(go.Scatter(
-    x=seven_day_avg['START_DATE'],
-    y=seven_day_avg['CREDITS_USED_7_DAY_AVG'],
-    mode='lines',
-    name='CREDITS_USED_7_DAY_AVG',
-#   fill='tonexty'
-     line=dict(color='red')
-)
-             )
-
-# Update layout
-fig.update_layout(
-    # title='Credits Usage and Cost Over Time',
-    xaxis_title='Date',
-    yaxis_title='Values',
-    barmode='overlay',
-    legend=dict(
-        x=0.01,  
-        y=1.3,  
+    # Add the area chart for CREDIT_USED_FOR_RESUME
+    fig.add_trace(go.Scatter(
+        x=seven_day_avg['START_DATE'],
+        y=seven_day_avg['CREDITS_USED_7_DAY_AVG'],
+        mode='lines',
+        name='CREDITS_USED_7_DAY_AVG',
+    #   fill='tonexty'
+        line=dict(color='red')
     )
-)
+                )
 
-# Render the chart in Streamlit
-st.plotly_chart(fig, use_container_width=True)
+    # Update layout
+    fig.update_layout(
+        # title='Credits Usage and Cost Over Time',
+        xaxis_title='Date',
+        yaxis_title='Values',
+        barmode='overlay',
+        legend=dict(
+            x=0.01,  
+            y=1.3,  
+        )
+    )
+
+    # Render the chart in Streamlit
+    st.plotly_chart(fig, use_container_width=True)

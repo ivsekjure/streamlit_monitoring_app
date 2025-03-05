@@ -127,52 +127,94 @@ st.plotly_chart(fig)
 # ================================
 # SF AUTOMATION TASK
 # ================================
-st.subheader("SF automation task")
-
 automation_task = sf_automation_task()
-automation_task = filter_date_time_frame(automation_task, "sf_automation_task", date_from, date_to)
+
+with st.container(border=True):
+    st.subheader("SF automation task")
+
+    # warehouse_name = st.selectbox('warehouse_name', wh_names, key=10)
+    year = st.selectbox('Year', range(2025, 1990, -1), key=11)
+    month = st.selectbox('Month', range(1, 13), key=12)
+
+    # automation_task = filter_date_time_frame(automation_task, "sf_automation_task", date_from, date_to)
+
+    automation_task = automation_task[automation_task['YEAR'] == year]
+    automation_task = automation_task[automation_task['MONTH'] == month]
 
 
-fig = go.Figure()
 
-# bar chart by NAME
-for warehouse in automation_task['NAME'].unique():
-    warehouse_data = automation_task[automation_task['NAME'] == warehouse]
-    fig.add_trace(go.Bar(
-        x=warehouse_data['DATE'],
-        y=warehouse_data['DURATION_HOURS'],
-        name=f'DURATION_HOURS ({warehouse})',
-        opacity=0.6,
-        text=warehouse_data['DURATION_HOURS'],
-        textposition='inside',  
-        textfont=dict(color='white')  
+    fig_automation = go.Figure()
+
+    # bar chart by NAME
+    for warehouse in automation_task['NAME'].unique():
+        warehouse_data = automation_task[automation_task['NAME'] == warehouse]
+        warehouse_data['DURATION_HOURS'] = warehouse_data['DURATION_HOURS'].apply(lambda x: round(x,3))
+        fig_automation.add_trace(go.Bar(
+            x=warehouse_data['DATE'],
+            y=warehouse_data['DURATION_HOURS'],
+            name=f'DURATION_HOURS ({warehouse})',
+            opacity=0.7,
+            text=warehouse_data['DURATION_HOURS'],
+            textposition='inside',  
+            textfont=dict(color='white'),
+        ))
+
+    # CREDITS_USED
+    fig_automation.add_trace(go.Scatter(
+        x=automation_task['DATE'],
+        y=automation_task['CREDITS_USED'],
+        mode='lines',
+        name='CREDITS_USED',
+        line=dict(color='blue')
     ))
 
-# CREDITS_USED
-fig.add_trace(go.Scatter(
-    x=automation_task['DATE'],
-    y=automation_task['CREDITS_USED'],
-    mode='lines',
-    name='CREDITS_USED',
-    line=dict(color='blue')
-))
+    # Update layout
+    fig_automation.update_layout(
+        title='Daily task durations and credits used',
+        xaxis_title='Date',
+        yaxis_title='Hours',
+        barmode='stack'
+    )
 
-# Update layout
-fig.update_layout(
-    title='Daily task durations and credits used',
-    xaxis_title='Date',
-    yaxis_title='Hours',
-    barmode='group'
-)
-
-st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig_automation, use_container_width=True)
 
 
 
-# ================================
-# NUMBER OF SAME QUERIES EXECUTED
-# ================================
-st.subheader("Number of same queries executed (all groups summed)")
+    # ================================
+    # NUMBER OF SAME QUERIES EXECUTED
+    # ================================
 
-st.area_chart(automation_task, x = 'DATE', y = 'EXE_COUNT', color = 'DATABASE_NAME')
+    unique_tasks = automation_task['NAME'].unique()
 
+    fig_exe_count = go.Figure()
+    for task in unique_tasks:
+        task_data = automation_task[automation_task['NAME'] == task]
+        fig_exe_count.add_trace(go.Bar(
+            x=task_data['DATE'],
+            y=task_data['EXE_COUNT'],
+            name=f'EXECUTION COUNT - {task}',
+            opacity=0.7,
+            text=task_data['EXE_COUNT'],
+            textposition='inside',  
+            textfont=dict(color='white'),
+            textangle=0
+            # width=1000*3600*24*0.8
+        ))
+
+    # Update layout
+    fig_exe_count.update_layout(
+        title='Number of same queries executed (all groups summed)',
+        xaxis_title='Date',
+        yaxis_title='Execution count',
+        barmode='stack'
+    )
+
+    # go.Bar(
+    #     x=automation_task['DATE'],
+    #     y=automation_task['EXE_COUNT'],
+    #     marker=dict(color=[color_map[cat] for cat in automation_task['NAME']]),
+    #     barmode='group'
+    # )
+
+    st.plotly_chart(fig_exe_count, use_container_width=True)
+    # st.bar_chart(automation_task, x = 'DATE', y = 'EXE_COUNT', color = 'NAME', use_container_width=True)

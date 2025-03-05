@@ -96,13 +96,13 @@ st.title("Query analysis")
 # DISPLAY NUMBER OF EXECUTIONS
 # ================================
 q_num_exec = query_num_of_executions()
-q_num_exec_filtered = filter_date_time_frame(q_num_exec, "query_num_of_executions", date_from, date_to)
-q_num_exec_filtered = q_num_exec.groupby(by=['DATE', 'WAREHOUSE_NAME']).sum().reset_index()
+q_num_exec_1 = q_num_exec.groupby(by=['DATE', 'WAREHOUSE_NAME']).sum().reset_index()
+q_num_exec_filtered = filter_date_time_frame(q_num_exec_1, "query_num_of_executions", date_from, date_to)
 
 st.bar_chart(q_num_exec_filtered, x = 'DATE', y = 'NUMBER_OF_QUERIES', color = 'WAREHOUSE_NAME', stack=True)
 
 st.subheader("Repeated queries")
-st.line_chart(q_num_exec_filtered, x = 'DATE', y = 'NUMBER_OF_QUERIES', color = 'QUERY_TEXT')
+st.bar_chart(q_num_exec_filtered, x = 'DATE', y = 'NUMBER_OF_QUERIES', color = 'QUERY_TEXT')
 
 
 
@@ -114,7 +114,7 @@ df = filter_date_time_frame(df, "query_num_of_executions", date_from, date_to)
 df1 = df.groupby(by=['DATE', 'TIME_GROUP']).sum().reset_index()
 
 st.subheader("Query segmentation into time groups")
-st.bar_chart(df1, x = "DATE", y = 'COUNT_OF_QUERIES', color = 'TIME_GROUP')
+st.bar_chart(df1, x = "DATE", y = 'COUNT_OF_QUERIES', color = 'TIME_GROUP', stack=False, use_container_width=True)
 
 df2 = df.groupby(by=['DATE', 'WAREHOUSE_NAME']).sum().reset_index()
 st.subheader("Execution minutes per WH")
@@ -129,21 +129,24 @@ q_duration = query_duration()
 
 wh_names = set(q_duration["WAREHOUSE_NAME"])
 
-duration_in_minutes = st.slider('duration in minutes', 0.1, 600.00)
-warehouse_name = st.selectbox('warehouse_name', wh_names)
-execution_start = st.date_input("Execution start")
+# duration_in_minutes = st.slider('duration in minutes', 0.1, 600.00)
+# warehouse_name = st.selectbox('warehouse_name', wh_names)
+# execution_start = st.date_input("Execution start")
 
-q_duration = q_duration[q_duration["EXECUTION_MINUTES"] >= duration_in_minutes]
-q_duration = q_duration[q_duration["WAREHOUSE_NAME"] == warehouse_name]
-q_duration = q_duration[q_duration["START_TIME"] == execution_start]
+# q_duration = q_duration[q_duration["EXECUTION_MINUTES"] >= duration_in_minutes]
+# q_duration = q_duration[q_duration["WAREHOUSE_NAME"] == warehouse_name]
+# q_duration = q_duration[q_duration["START_TIME"] == execution_start]
 
 
 
 # ================================
 # DISPLAY LONGEST RUNNING QUERIES
 # ================================
+st.subheader("Longest running queries by user")
+
 longest_q = longest_queries()
+st.dataframe(longest_q, use_container_width=True)
 longest_q = longest_q.groupby(by=['USER_NAME', 'YEAR_MONTH_WEEK']).sum().reset_index()
 
-st.subheader("Longest running queries by user")
+
 st.bar_chart(longest_q, x = "YEAR_MONTH_WEEK", y = "EXECUTION_TIME_MINUTES", color = "USER_NAME")
